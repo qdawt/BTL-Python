@@ -172,5 +172,61 @@ for number, stat in enumerate (stats, start=1):
     plt.close(fig)
     cnt_image += 1
 
-print("------DONE!------")
+
+
+# Histogram cho các đội dựa trên 6 chỉ số trong SELECT_STATS
+cnt_image_team_file = 0
+for number, stat in enumerate(SELECT_STATS, start=1):
+    all_values = df[stat].dropna()
+    if all_values.empty:
+        print(f"Bỏ qua {stat}: không có dữ liệu để vẽ theo đội.")
+        continue
+
+    minimum = all_values.min()
+    maximum = all_values.max()
+    if minimum == maximum:
+        minimum -= 0.5
+        maximum += 0.5
+
+    number_of_rows = len(teams) // 5
+    if len(teams) % 5 != 0:
+        number_of_rows += 1
+    if number_of_rows == 0:
+        number_of_rows += 1
+    
+    fig, axes = plt.subplots(
+        number_of_rows, 5, # chia số hàng và số histogram (cụ thể là 6 hàng 5 histogram)
+        figsize=(18, number_of_rows * 3.3),
+        sharex=True, 
+        sharey=True, # các biểu đồ dùng chung thang đo cột x, y
+        squeeze=False,
+    )
+
+    for ax, team in zip(axes.flat, teams):
+        # zip(...): ghép một ô với một đội
+        # axes.flat: lấy lần lượt từng ô biểu đồ
+        values = df.loc[df["Team"] == team, stat].dropna()
+        ax.hist(
+            values, bins=10, 
+            range=(minimum, maximum),
+            color="darkorange", 
+            edgecolor="white",
+        )
+        ax.set_title(f"{team} (n={len(values)})")
+        ax.set_xlim(minimum, maximum)
+        ax.set_axisbelow(True)
+        ax.grid(axis="y", alpha=0.25)
+
+    for ax in list(axes.flat)[len(teams):]:
+        ax.set_visible(False)
+
+    fig.suptitle(f"{stat} distribution by team", fontsize=18)
+    fig.supxlabel(stat)
+    fig.supylabel("Number of players")
+    fig.tight_layout(rect=(0.03, 0.03, 1, 0.97))
+    fig.savefig(TEAM_CHART_DIR / image_file_name(number, stat), dpi=150)
+    plt.close(fig)
+    cnt_image_team_file += 1
+    print(f"Đã vẽ phân bố {stat} theo đội.")
+
 
