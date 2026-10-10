@@ -1,0 +1,149 @@
+1. Các hàm vẽ biểu đồ
+Hàm	                                    Loại biểu đồ	                                           Công dụng
+plt.plot(x, y)	                        Đường	                                            Xem xu hướng tăng giảm
+plt.bar(x, y)	                        Cột đứng	                                        So sánh các nhóm
+plt.barh(x, y)	                        Cột ngang	                                        So sánh nhóm có tên dài
+plt.hist(data, bins=...)                Histogram	                                        Xem phân bố dữ liệu số
+plt.scatter(x, y)	                    Phân tán	                                        Xem quan hệ giữa hai biến số
+plt.pie(values)	                        Tròn	                                            Biểu diễn tỷ trọng
+plt.boxplot(data)	                    Hộp	                                                Xem trung vị, độ phân tán và dấu hiệu ngoại lệ
+
+
+
+2. Các hàm tạo và trình bày biểu đồ
+Hàm	                            Công dụng	                                                      Ví dụ
+plt.figure()	                Tạo một hình mới	                                    plt.figure(figsize=(8, 5))
+plt.title()	                    Đặt tiêu đề	                                            plt.title("Phân bố điểm")
+plt.xlabel()	                Đặt nhãn trục X	                                        plt.xlabel("Điểm")
+plt.ylabel()	                Đặt nhãn trục Y	                                        plt.ylabel("Số sinh viên")
+plt.xticks()	                Đặt các mốc trên trục X	                                plt.xticks([0, 2, 4, 6, 8, 10])
+plt.yticks()	                Đặt các mốc trên trục Y	                                plt.yticks([0, 1, 2, 3, 4])
+plt.xlim()	                    Giới hạn vùng nhìn trên trục X	                        plt.xlim(0, 10)
+plt.ylim()	                    Giới hạn vùng nhìn trên trục Y	                        plt.ylim(0, 5)
+plt.grid()	                    Thêm đường lưới	                                        plt.grid(axis="y", alpha=0.3)
+plt.legend()	                Hiện chú giải	                                        plt.legend()
+plt.tight_layout()	            Điều chỉnh bố cục	                                    plt.tight_layout()
+plt.savefig()	                Lưu hình thành file	                                    plt.savefig("bieudo.png")
+plt.show()	                    Hiển thị hình	                                        plt.show()
+plt.close()	                    Đóng hình, giải phóng tài nguyên	                    plt.close()
+
+
+Nhớ phân biệt: xticks() đặt mốc trên trục; xlim() đặt phạm vi nhìn thấy. Hai hàm này không thay đổi dữ liệu gốc.
+
+3. Các hàm thêm thông tin vào biểu đồ
+# Đường ngang tại y = 5
+plt.axhline(y=5, color="red", linestyle="--")
+# Đường dọc tại x = 6
+plt.axvline(x=6, color="green", linestyle="--")
+# Viết chữ tại tọa độ (4, 3)
+plt.text(4, 3, "Vị trí cần chú ý")
+# Chú thích có mũi tên
+plt.annotate(    
+    "Điểm cao nhất",    
+    xy=(3, 20),        
+    # Vị trí được chỉ tới    
+    xytext=(2, 23),    
+    # Vị trí đặt chữ    
+    arrowprops={"arrowstyle": "->"})
+
+
+
+4. Những tham số thường dùng
+Đây là tham số truyền vào hàm, không phải các hàm riêng:
+Tham số	                                Ý nghĩa	                                        Ví dụ
+color	                                Màu	                                            color="blue"
+alpha	                                Độ trong suốt, từ 0 đến 1	                    alpha=0.5
+label	                                Tên dữ liệu trong chú giải	                    label="Lớp A"
+linewidth	                            Độ dày đường	                                linewidth=2
+linestyle	                            Kiểu đường	                                    linestyle="--"
+marker	                                Ký hiệu tại điểm	                            marker="o"
+edgecolor	                            Màu viền cột	                                edgecolor="black"
+bins	                                Số khoảng hoặc ranh giới histogram	            bins=[0, 2, 4, 6, 8, 10]
+figsize	                                Kích thước hình, tính bằng inch	                figsize=(8, 5)
+dpi	                                    Độ phân giải ảnh	                            dpi=300
+
+
+Mỗi loại biểu đồ hỗ trợ những tham số phù hợp. Ví dụ bins dùng cho histogram, còn marker thường dùng cho biểu đồ đường.
+
+
+Vi du:
+import matplotlib.pyplot as plt
+
+diem = [1, 2, 2, 3, 4, 5, 5, 6, 7, 9]
+
+# Tính trung bình: tổng điểm / số sinh viên
+trung_binh = sum(diem) / len(diem)
+
+# Tạo hình
+plt.figure(figsize=(8, 5))
+
+# Vẽ histogram
+plt.hist(
+    diem,
+    bins=[0, 2, 4, 6, 8, 10],
+    color="skyblue",
+    edgecolor="black"
+)
+
+# Đánh dấu điểm trung bình
+plt.axvline(hình
+    x=trung_binh,
+    color="red",
+    linestyle="--",
+    linewidth=2,
+    label=f"Trung bình: {trung_binh:.1f}"
+)
+Biến fig: chứa đối tượng Figure, hiểu như toàn bộ tấm màn hình
+Biến ax: chứa axes, hiểu như vùng vẽ biểu đồ bên trong tấm hình
+# Thêm thông tin
+plt.title("Phân bố điểm sinh viên")
+plt.xlabel("Điểm")
+plt.ylabel("Số sinh viên")
+plt.xticks([0, 2, 4, 6, 8, 10])
+plt.yticks([0, 1, 2, 3, 4])
+plt.grid(axis="y", alpha=0.3)
+plt.legend()
+
+# Chỉnh bố cục, lưu và hiển thị
+plt.tight_layout()
+plt.savefig("histogram.png", dpi=300)
+plt.show()
+
+
+- enumerate() giúp duyệt từng phần tử và lấy luôn số thứ tự của phần tử đó.
+-vd: teams = ["Lakers", "Warriors", "Celtics"]
+for i, team in enumerate(teams):
+    print(i, team)       
+----> in ra :
+0 Lakers
+1 Warriors
+2 Celtics 
+
+
+
+
+dropna() là hàm loại bỏ dữ liệu thiếu; subset là tham số cho biết cần kiểm tra ở những cột nào.
+
+
+
+#isna: phat hien xem co thieu du lieu ko
+#.any() kiểm tra xem có ít nhất một giá trị True hay không.
+
+
+
+
+#interrows(): Nó dùng để duyệt lần lượt từng dòng trong bảng DataFrame. Mỗi lần duyệt, nó đưa ra hai thứ:
+- Index: nhãn của dòng.
+- Dữ liệu của dòng: một Series, cho phép lấy giá trị theo tên cột.
+Ví dụ:
+import pandas as pd
+df = pd.DataFrame({
+        "Player": ["LeBron James", "Chris Paul", "Taj Gibson"],    
+        "Age": [40, 39, 39]})
+for idx, player in df.iterrows():
+    print(idx, player["Player"], player["Age"])
+
+Kết quả:
+0 LeBron James 40
+1 Chris Paul 39
+2 Taj Gibson 39
