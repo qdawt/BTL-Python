@@ -1,2 +1,2 @@
-# BTL-Python
-Chia sẻ code, nội dung bài làm
+# BTL-PYTHON
+Lưu trữ code của từng bài, hướng dẫn cài đặt và kết quả
