@@ -121,7 +121,7 @@ for group_name, group_data in groups:
     rows = {"Team": group_name}
 
     for stat in stats:
-        values = df[stat].dropna()
+        values = group_data[stat].dropna()
 
         rows[f"Median of {stat}"] = values.median() if len(values) else float("nan")
         rows[f"Mean of {stat}"] = values.mean() if len(values) else float("nan")
@@ -229,5 +229,48 @@ for number, stat in enumerate(SELECT_STATS, start=1):
     cnt_image_team_file += 1
     print(f"Đã vẽ phân bố {stat} theo đội.")
 
+# so sanh doi bang trung binh chi so
+team_means = df.groupby("Team")[stats].mean()
+team_means.to_csv(
+    OUTPUT_DIR / "team_means.csv", encoding="utf-8-sig", na_rep="N/a",
+)
 
+comparison_rows = []
+for stat in stats:
+    values = team_means[stat].dropna()
+    if values.empty:
+        continue
+
+    highest_value = values.max()
+    lowest_value = values.min()
+    highest_teams = values[values == highest_value].index.tolist()
+    lowest_teams = values[values == lowest_value].index.tolist()
+    choose_lowest = stat in LOWER_IS_BETTER
+
+    comparison_rows.append({
+        "Statistic": stat,
+        "Highest_teams": ", ".join(highest_teams),
+        "Highest_mean": highest_value,
+        "Lowest_teams": ", ".join(lowest_teams),
+        "Lowest_mean": lowest_value,
+        "Selection_rule": "min" if choose_lowest else "max",
+        "Selected_teams": ", ".join(lowest_teams if choose_lowest else highest_teams),
+        "Selected_mean": lowest_value if choose_lowest else highest_value,
+    })
+
+pd.DataFrame(comparison_rows).to_csv(
+    OUTPUT_DIR / "team_comparison.csv", index=False, encoding="utf-8-sig",
+)
+
+report_stats = ["PTS", "TRB", "AST", "TS%", "BPM", "WS", "TOV", "PF", "DRtg"]
+report_table = team_means[report_stats]
+report_table.to_csv(
+    OUTPUT_DIR / "team_report.csv", encoding="utf-8-sig", na_rep="N/a",
+)
+
+
+print("\nTrung bình các chỉ số tiêu biểu theo đội:")
+print(report_table.round(3).to_string())
+print(f"\nĐã lưu {image_file_name} ảnh toàn giải và {cnt_image_team_file} ảnh tổng hợp theo đội.")
+print(f"Đã lưu kết quả vào: {OUTPUT_DIR}")
     
