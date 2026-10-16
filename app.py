@@ -406,5 +406,188 @@ def main():
     else:
         page_teams(df)
 
+# ----------------------------------------------------------------------------
+# TRANG 5: ĐỊNH GIÁ & DỰ ĐOÁN LƯƠNG CẦU THỦ (PHẦN 4)
+# ----------------------------------------------------------------------------
+def page_valuation():
+    st.header("Định giá & Dự đoán lương cầu thủ (Machine Learning)")
+
+    val_df = load_optional(
+        "phan4/output/player_valuation_ranking.csv",
+        "phan4/player_valuation_ranking.csv",
+        "output/player_valuation_ranking.csv",
+    )
+    metrics_df = load_optional(
+        "phan4/output/model_metrics.csv",
+        "phan4/model_metrics.csv",
+        "output/model_metrics.csv",
+    )
+
+    if val_df is None:
+        st.info("Chưa tìm thấy dữ liệu Phần 4 (`player_valuation_ranking.csv`). Hãy chạy `python phan4/valuation.py` trước.")
+        return
+
+    for c in ["Age", "PTS", "VORP", "Actual_Million_USD", "Predicted_Million_USD", "Diff_Million_USD"]:
+        if c in val_df.columns:
+            val_df[c] = pd.to_numeric(val_df[c], errors="coerce")
+
+    # 1. Tổng quan mô hình
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Số cầu thủ định giá", len(val_df))
+    if metrics_df is not None and not metrics_df.empty:
+        best_row = metrics_df.iloc[0]
+        c2.metric("Mô hình tốt nhất", str(best_row["Model"]))
+        c3.metric("CV R² (5-Fold)", f"{float(best_row['CV_R2']):.4f}")
+        c4.metric("Test R²", f"{float(best_row['Test_R2']):.4f}")
+
+    if metrics_df is not None:
+        with st.expander("Bảng so sánh hiệu năng các mô hình học máy (model_metrics.csv)", expanded=False):
+            st.dataframe(metrics_df, width="stretch", hide_index=True)
+
+    # 2. Tra cứu & Lọc định giá cầu thủ
+    st.subheader("Bảng xếp hạng định giá cầu thủ")
+    f1, f2, f3, f4 = st.columns([2, 2, 2, 2])
+    q = f1.text_input("Tìm tên cầu thủ", placeholder="ví dụ: simmons, curry, jokic...")
+    teams = f2.multiselect("Đội", sorted(val_df["Team"].dropna().unique()))
+    poss = f3.multiselect("Vị trí chính", sorted(val_df["Pos"].dropna().unique()))
+    status = f4.selectbox(
+        "Nhóm định giá",
+        ["Tất cả", "Overpaid (Lương thực tế > Dự đoán)", "Underpaid (Lương thực tế < Dự đoán)"]
+    )
+
+    view = val_df.copy()
+    if q.strip():
+        view["_key"] = view["Player"].map(norm)
+        view = view[view["_key"].str.contains(norm(q), regex=False)]
+    if teams:
+        view = view[view["Team"].isin(teams)]
+    if poss:
+        view = view[view["Pos"].isin(poss)]
+    if status.startswith("Overpaid"):
+        view = view[view["Diff_Million_USD"] > 0].sort_values("Diff_Million_USD", ascending=False)
+    elif status.startswith("Underpaid"):
+        view = view[view["Diff_Million_USD"] < 0].sort_values("Diff_Million_USD", ascending=True)
+
+    show_cols = ["Player", "Team", "Pos", "Age", "PTS", "VORP", "Actual_Million_USD", "Predicted_Million_USD", "Diff_Million_USD"]
+    show_cols = [c for c in show_cols if c in view.columns]
+    st.caption(f"Hiển thị {len(view)} / {len(val_df)} cầu thủ (Đơn vị lương: Triệu USD)")
+    st.dataframe(
+        view[show_cols].round(2).rename(columns={
+            "Actual_Million_USD": "Lương thực tế ($M)",
+            "Predicted_Million_USD": "Lương dự đoán ($M)",
+            "Diff_Million_USD": "Chênh lệch ($M)",
+        }),
+        width="stretch",
+        hide_index=True,
+        height=380,
+    )
+
+    # 3. Top 10 Overpaid & Top 10 Underpaid
+    st.subheader("Top 10 Overpaid & Top 10 Underpaid")
+    col_over, col_under = st.columns(2)
+    top_over = val_df.sort_values("Diff_Million_USD", ascending=False).head(10)
+    top_under = val_df.sort_values("Diff_Million_USD", ascending=True).head(10)
+    summary_cols = ["Player", "Team", "Age", "PTS", "Actual_Million_USD", "Predicted_Million_USD", "Diff_Million_USD"]
+
+    with col_over:
+        st.markdown("🔴 **Top 10 Định giá cao (Overpaid - Lương thực tế >> Mô hình)**")
+        st.dataframe(
+            top_over[summary_cols].round(2).rename(columns={
+                "Actual_Million_USD": "Thực tế ($M)",
+                "Predicted_Million_USD": "Dự đoán ($M)",
+                "Diff_Million_USD": "Lệch ($M)",
+            }),
+            width="stretch",
+            hide_index=True,
+        )
+
+    with col_under:
+        st.markdown("🟢 **Top 10 Định giá thấp (Underpaid / Món hời - Lương thực tế << Mô hình)**")
+        st.dataframe(
+            top_under[summary_cols].round(2).rename(columns={
+                "Actual_Million_USD": "Thực tế ($M)",
+                "Predicted_Million_USD": "Dự đoán ($M)",
+                "Diff_Million_USD": "Lệch ($M)",
+            }),
+            width="stretch",
+            hide_index=True,
+        )
+
+    # 4. Biểu đồ trực quan từ Phần 4
+    st.subheader("Biểu đồ phân tích định giá")
+    img1 = find_file(
+        "phan4/output/01_actual_vs_predicted.png",
+        "phan4/output/01_actual_vs_predicted.jpg",
+        "phan4/01_actual_vs_predicted.png",
+        "phan4/01_actual_vs_predicted.jpg",
+    )
+    img2 = find_file(
+        "phan4/output/02_feature_importance.png",
+        "phan4/output/02_feature_importance.jpg",
+        "phan4/02_feature_importance.png",
+        "phan4/02_feature_importance.jpg",
+    )
+    img3 = find_file(
+        "phan4/output/03_overpaid_underpaid.png",
+        "phan4/output/03_overpaid_underpaid.jpg",
+        "phan4/03_overpaid_underpaid.png",
+        "phan4/03_overpaid_underpaid.jpg",
+    )
+
+    tab1, tab2, tab3 = st.tabs([
+        "1. Thực tế vs Dự đoán",
+        "2. Mức độ quan trọng đặc trưng",
+        "3. Top Overpaid / Underpaid",
+    ])
+    with tab1:
+        if img1 is not None:
+            st.image(str(img1), width="stretch")
+        else:
+            st.warning("Chưa tìm thấy ảnh 01_actual_vs_predicted.")
+    with tab2:
+        if img2 is not None:
+            st.image(str(img2), width="stretch")
+        else:
+            st.warning("Chưa tìm thấy ảnh 02_feature_importance.")
+    with tab3:
+        if img3 is not None:
+            st.image(str(img3), width="stretch")
+        else:
+            st.warning("Chưa tìm thấy ảnh 03_overpaid_underpaid.")
+
+
+# ----------------------------------------------------------------------------
+# MAIN
+# ----------------------------------------------------------------------------
+def main():
+    df = load_players()
+    st.sidebar.title("🏀 NBA 2024-25")
+    if df is None:
+        st.error("Không tìm thấy phan1/results.csv. Hãy chạy web từ repo gốc (đã có thư mục phan1/) rồi thử lại.")
+        st.stop()
+    page = st.sidebar.radio(
+        "Trang",
+        [
+            "Tra cứu cầu thủ",
+            "So sánh radar",
+            "Phân cụm cầu thủ",
+            "Thống kê đội",
+            "Định giá & Lương",
+        ],
+    )
+    st.sidebar.caption(f"{len(df)} cầu thủ · {len(df.columns) - 1} thống kê · nguồn Basketball-Reference")
+    clusters = load_optional("phan3/player_clusters.csv")
+
+    if page == "Tra cứu cầu thủ":
+        page_lookup(df, clusters)
+    elif page == "So sánh radar":
+        page_radar(df)
+    elif page == "Phân cụm cầu thủ":
+        page_clusters(df, clusters)
+    elif page == "Thống kê đội":
+        page_teams(df)
+    else:
+        page_valuation()
+
 
 main()
