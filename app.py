@@ -2,14 +2,15 @@
 """
 Web tra cứu và phân tích cầu thủ NBA mùa 2024-25 (Streamlit).
 
-Chạy:
-    pip install -r web/requirements.txt
-    streamlit run web/app.py
+Chạy (từ thư mục gốc của repo):
+    pip install -r requirements.txt
+    streamlit run app.py
 
 Web CHỈ ĐỌC các file đã có sẵn trong repo (không gọi lại crawl.py):
     phan1/results.csv                 dữ liệu cầu thủ (Bài 1)
     phan2/output/*.csv                thống kê đội, top 3 (Bài 2)
     phan3/*.csv, phan3/*.png          cụm K-means, PCA (Bài 3)
+    phan4/*                           kết quả Bài 4 (csv, png, md)
 """
 import unicodedata
 from pathlib import Path
@@ -78,6 +79,11 @@ def load_players():
 def load_optional(*candidates):
     p = find_file(*candidates)
     return read_csv_safe(p) if p is not None else None
+
+
+@st.cache_data(show_spinner=False)
+def load_csv_path(path_str):
+    return read_csv_safe(path_str)
 
 
 def numeric_cols(df):
@@ -376,6 +382,135 @@ def page_teams(df):
 
 
 # ----------------------------------------------------------------------------
+# TRANG 5: PHẦN 4 (đọc từ phan4/)
+# ----------------------------------------------------------------------------
+def page_phan4(df):
+    st.header("Phần 4")
+
+    folder = next((b / "phan4" for b in (ROOT, HERE) if (b / "phan4").exists()), None)
+    if folder is None:
+        st.info("Chưa tìm thấy thư mục phan4/.")
+        return
+
+    csvs = sorted(folder.rglob("*.csv"))
+    imgs = sorted(p for ext in ("*.png", "*.jpg", "*.jpeg") for p in folder.rglob(ext))
+    mds = sorted(folder.rglob("*.md"))
+
+    if not (csvs or imgs or mds):
+        st.info("phan4/ chưa có file .csv, .png hoặc .md để hiển thị.")
+        return
+
+    data, name = None, None
+    if csvs:
+        pick = st.selectbox("File dữ liệu", csvs, format_func=lambda p: str(p.relative_to(folder)))
+        name = pick.name
+        data = load_csv_path(str(pick)).copy()
+
+        # Ghép thêm thông tin cầu thủ từ phan1 nếu file có cột Player
+        if "Player" in data.columns:
+            extra = [c for c in ("Team", "Pos", "MP") if c in df.columns and c not in data.columns]
+            if extra:
+                data = data.merge(df[["Player"] + extra].drop_duplicates("Player"), on="Player", how="left")
+
+        # Bộ lọc
+        f1, f2 = st.columns(2)
+        if "Player" in data.columns:
+            q = f1.text_input("Tìm theo tên", placeholder="ví dụ: jokic...", key="p4_q")
+            if q.strip():
+                data = data[data["Player"].map(norm).str.contains(norm(q), regex=False)]
+        if "Team" in data.columns:
+            teams = f2.multiselect("Đội", sorted(data["Team"].dropna().unique()), key="p4_teams")
+            if teams:
+                data = data[data["Team"].isin(teams)]
+
+    tab_data, tab_chart, tab_media = st.tabs(["📋 Dữ liệu", "📊 Biểu đồ", "🖼️ Hình và ghi chú"])
+
+    # ---------------- Tab dữ liệu ----------------
+    with tab_data:
+        if data is None:
+            st.info("phan4/ không có file CSV.")
+        else:
+            st.caption(f"{len(data)} dòng · {len(data.columns)} cột")
+            st.dataframe(data, width="stretch", hide_index=True, height=420)
+            st.download_button("Tải CSV đã lọc", data.to_csv(index=False).encode("utf-8-sig"),
+                               file_name=f"filtered_{name}", mime="text/csv")
+
+    # ---------------- Tab biểu đồ ----------------
+    with tab_chart:
+        if data is None or data.empty:
+            st.info("Không có dữ liệu để vẽ.")
+        else:
+            num = data.apply(pd.to_numeric, errors="coerce")
+            ncols = [c for c in data.columns
+                     if c not in TEXT_COLS and not str(c).startswith("_") and num[c].notna().mean() > 0.5]
+            label_col = next((c for c in ("Player", "Team") if c in data.columns), data.columns[0])
+
+            if not ncols:
+                st.info("File này không có cột số để vẽ biểu đồ.")
+            else:
+                kind = st.radio("Loại biểu đồ", ["Top N", "Scatter 2 biến", "Histogram"], horizontal=True)
+
+                if kind == "Top N":
+                    a, b, c = st.columns(3)
+                    col = a.selectbox("Cột số", ncols, key="p4_top_col")
+                    n = b.slider("Số dòng", 5, 30, 10)
+                    asc = c.checkbox("Thấp nhất thay vì cao nhất")
+                    s = pd.DataFrame({"label": data[label_col].astype(str), "v": num[col]}).dropna()
+                    s = s.sort_values("v", ascending=asc).head(n).iloc[::-1]
+                    fig, ax = plt.subplots(figsize=(9, max(3, 0.38 * len(s) + 1)))
+                    ax.barh(s["label"], s["v"], color=BLUE)
+                    ax.set_xlabel(col)
+                    ax.grid(axis="x", alpha=0.25)
+                    fig.tight_layout()
+                    st.pyplot(fig, width="stretch")
+
+                elif kind == "Scatter 2 biến":
+                    if len(ncols) < 2:
+                        st.info("Cần ít nhất 2 cột số.")
+                    else:
+                        a, b = st.columns(2)
+                        x = a.selectbox("Trục X", ncols, index=0)
+                        y = b.selectbox("Trục Y", ncols, index=1)
+                        s = pd.DataFrame({"label": data[label_col].astype(str), "x": num[x], "y": num[y]}).dropna()
+                        fig, ax = plt.subplots(figsize=(9, 5.5))
+                        ax.scatter(s["x"], s["y"], s=26, alpha=0.7, color=BLUE)
+                        for _, r in s.sort_values("y", ascending=False).head(5).iterrows():
+                            ax.annotate(r["label"], (r["x"], r["y"]), xytext=(5, 5),
+                                        textcoords="offset points", fontsize=8)
+                        ax.set_xlabel(x)
+                        ax.set_ylabel(y)
+                        ax.grid(alpha=0.25)
+                        fig.tight_layout()
+                        st.pyplot(fig, width="stretch")
+                        if len(s) > 2:
+                            st.caption(f"Hệ số tương quan Pearson giữa {x} và {y}: {s['x'].corr(s['y']):.3f}")
+
+                else:
+                    a, b = st.columns(2)
+                    col = a.selectbox("Cột số", ncols, key="p4_hist_col")
+                    bins = b.slider("Số khoảng (bins)", 5, 50, 24)
+                    vals = num[col].dropna()
+                    fig, ax = plt.subplots(figsize=(9, 3.8))
+                    ax.hist(vals, bins=bins, color=BLUE, alpha=0.6, edgecolor="white")
+                    ax.axvline(vals.mean(), color=RED, ls="--", lw=1.2, label=f"Trung bình {vals.mean():.2f}")
+                    ax.set_xlabel(col)
+                    ax.set_ylabel("Số dòng")
+                    ax.grid(axis="y", alpha=0.25)
+                    ax.legend()
+                    fig.tight_layout()
+                    st.pyplot(fig, width="stretch")
+
+    # ---------------- Tab hình + ghi chú ----------------
+    with tab_media:
+        for m in mds:
+            st.markdown(m.read_text(encoding="utf-8"))
+        for p in imgs:
+            st.image(str(p), caption=p.name, width="stretch")
+        if not (mds or imgs):
+            st.info("phan4/ chưa có ảnh hoặc file .md.")
+
+
+# ----------------------------------------------------------------------------
 # MAIN
 # ----------------------------------------------------------------------------
 def main():
@@ -384,18 +519,22 @@ def main():
     if df is None:
         st.error("Không tìm thấy phan1/results.csv. Hãy chạy web từ repo gốc (đã có thư mục phan1/) rồi thử lại.")
         st.stop()
-    page = st.sidebar.radio("Trang", ["Tra cứu cầu thủ", "So sánh radar", "Phân cụm cầu thủ", "Thống kê đội"])
-    st.sidebar.caption(f"{len(df)} cầu thủ · {len(df.columns) - 1} thống kê · nguồn Basketball-Reference")
+
     clusters = load_optional("phan3/player_clusters.csv")
 
-    if page == "Tra cứu cầu thủ":
-        page_lookup(df, clusters)
-    elif page == "So sánh radar":
-        page_radar(df)
-    elif page == "Phân cụm cầu thủ":
-        page_clusters(df, clusters)
-    else:
-        page_teams(df)
+    # Thêm trang mới: chỉ cần thêm một dòng vào dict này
+    pages = {
+        "Tra cứu cầu thủ":  lambda: page_lookup(df, clusters),
+        "So sánh radar":    lambda: page_radar(df),
+        "Phân cụm cầu thủ": lambda: page_clusters(df, clusters),
+        "Thống kê đội":     lambda: page_teams(df),
+        "Phần 4":           lambda: page_phan4(df),
+    }
+
+    page = st.sidebar.radio("Trang", list(pages))
+    st.sidebar.caption(f"{len(df)} cầu thủ · {len(df.columns) - 1} thống kê · nguồn Basketball-Reference")
+
+    pages[page]()
 
 
 main()
