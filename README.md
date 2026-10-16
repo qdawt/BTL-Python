@@ -8,7 +8,7 @@ streamlit run web/app.py
 (chạy từ thư mục gốc của repo, nơi có phan1/, phan2/, phan3/)
 
 ## Deploy trên Streamlit Community Cloud (không bắt buộc)
-- Main file path: `web.zip`
+- Main file path: `web/app.py`
 - Dependency file `web/requirements.txt` sẽ được tự nhận.
 - Link Streamlit : `https://btl-python-jkb6yyrkfpdq2ebgxkc3rq.streamlit.app/` để mọi người thử chạy
 
