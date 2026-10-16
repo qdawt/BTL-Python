@@ -10,8 +10,9 @@ streamlit run web/app.py
 (chạy từ thư mục gốc của repo, nơi có phan1/, phan2/, phan3/)
 
 ## Deploy trên Streamlit Community Cloud (không bắt buộc)
-- Main file path: `web/app.py`
+- Main file path: `web.zip`
 - Dependency file `web/requirements.txt` sẽ được tự nhận.
+- Link Streamlit : `https://btl-python-jkb6yyrkfpdq2ebgxkc3rq.streamlit.app/` để mọi người thử chạy
 
 ## Các trang
 1. Tra cứu cầu thủ: lọc theo tên, đội, vị trí, số phút; xem chi tiết một cầu thủ.
