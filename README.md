@@ -1,7 +1,5 @@
 # Web NBA 2024-25 (Streamlit)
 
-Web chỉ đọc các file có sẵn trong repo (phan1/results.csv, phan2/output/*.csv, phan3/*.csv), không gọi lại crawl.py.
-
 ## Chạy trên máy
 ```
 pip install -r web/requirements.txt
