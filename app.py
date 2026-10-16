@@ -441,7 +441,7 @@ def page_valuation():
         c4.metric("Test R²", f"{float(best_row['Test_R2']):.4f}")
 
     if metrics_df is not None:
-        with st.expander("Bảng so sánh hiệu năng các mô hình học máy (model_metrics.csv)", expanded=False):
+        with st.expander("Bảng so sánh hiệu năng các mô hình học máy", expanded=False):
             st.dataframe(metrics_df, width="stretch", hide_index=True)
 
     # 2. Tra cứu & Lọc định giá cầu thủ
