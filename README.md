@@ -62,13 +62,6 @@ Web có 5 trang: tra cứu cầu thủ, biểu đồ radar, phân cụm (K-means
 `phan4/output/`: chạy `python phan4/valuation.py`, sau đó commit và push thư mục
 `phan4/output/` lên GitHub rồi tải lại web.
 
-## Triển khai trên Streamlit Community Cloud
-
-1. Đăng nhập [share.streamlit.io](https://share.streamlit.io) bằng tài khoản GitHub.
-2. Chọn repo này, nhánh `main`.
-3. **Main file path: `app.py`** (không dùng `crawl.py` hay file trong thư mục khác).
-4. Cloud tự cài thư viện từ `requirements.txt` (chỉ gồm streamlit, pandas, numpy, matplotlib).
-
 ## Ghi chú dữ liệu
 
 - Cầu thủ chuyển đội trong mùa được gộp theo Player-ID (dòng 2TM/3TM/TOT), chỉ giữ cầu thủ có MP > 200.
@@ -77,6 +70,3 @@ Web có 5 trang: tra cứu cầu thủ, biểu đồ radar, phân cụm (K-means
 - Lương dự đoán lấy từ mô hình hồi quy trên log(lương); chênh lệch = lương thực tế − lương dự đoán
   (dương = overpaid, âm = underpaid).
 
-## Thành viên nhóm
-
-Danh sách 10 thành viên: (điền tên và MSSV).
