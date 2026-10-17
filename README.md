@@ -53,6 +53,7 @@ khi đó hãy thử mạng khác hoặc cài thêm `cloudscraper`.
 ```bash
 streamlit run app.py
 ```
+`https://btl-python-jkb6yyrkfpdq2ebgxkc3rq.streamlit.app/`
 
 Web có 5 trang: tra cứu cầu thủ, biểu đồ radar, phân cụm (K-means/PCA), so sánh đội,
 **Định giá & Lương**. Trang Định giá & Lương chỉ hiển thị kết quả sau khi đã có
