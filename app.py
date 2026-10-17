@@ -385,28 +385,6 @@ def page_teams(df):
 
 
 # ----------------------------------------------------------------------------
-# MAIN
-# ----------------------------------------------------------------------------
-def main():
-    df = load_players()
-    st.sidebar.title("🏀 NBA 2024-25")
-    if df is None:
-        st.error("Không tìm thấy phan1/results.csv. Hãy chạy web từ repo gốc (đã có thư mục phan1/) rồi thử lại.")
-        st.stop()
-    page = st.sidebar.radio("Trang", ["Tra cứu cầu thủ", "So sánh radar", "Phân cụm cầu thủ", "Thống kê đội"])
-    st.sidebar.caption(f"{len(df)} cầu thủ · {len(df.columns) - 1} thống kê · nguồn Basketball-Reference")
-    clusters = load_optional("phan3/player_clusters.csv")
-
-    if page == "Tra cứu cầu thủ":
-        page_lookup(df, clusters)
-    elif page == "So sánh radar":
-        page_radar(df)
-    elif page == "Phân cụm cầu thủ":
-        page_clusters(df, clusters)
-    else:
-        page_teams(df)
-
-# ----------------------------------------------------------------------------
 # TRANG 5: ĐỊNH GIÁ & DỰ ĐOÁN LƯƠNG CẦU THỦ (PHẦN 4)
 # ----------------------------------------------------------------------------
 def page_valuation():
@@ -423,9 +401,30 @@ def page_valuation():
         "output/model_metrics.csv",
     )
 
+    st.caption(
+        "Lương dự đoán là mức mô hình cho là hợp lý theo chỉ số thi đấu. "
+        "Chênh lệch = lương thực tế − lương dự đoán: số dương là bị trả cao hơn mô hình (overpaid), "
+        "số âm là bị trả thấp hơn mô hình (underpaid)."
+    )
+
     if val_df is None:
-        st.info("Chưa tìm thấy dữ liệu Phần 4 (`player_valuation_ranking.csv`). Hãy chạy `python phan4/valuation.py` trước.")
+        st.info(
+            "Chưa có kết quả Phần 4 trong repo. Cách tạo:\n\n"
+            "1. Trên máy có mạng, chạy `python phan4/valuation.py` (cần `pip install -r requirements-analysis.txt`).\n"
+            "2. Chương trình ghi kết quả vào thư mục `phan4/output/` "
+            "(`player_valuation_ranking.csv`, `model_metrics.csv` và 3 ảnh `01_...png`, `02_...png`, `03_...png`).\n"
+            "3. Commit và push thư mục `phan4/output/` lên GitHub rồi tải lại trang này."
+        )
         return
+
+    required = ["Player", "Actual_Million_USD", "Predicted_Million_USD", "Diff_Million_USD"]
+    missing_cols = [c for c in required if c not in val_df.columns]
+    if missing_cols:
+        st.error(f"File kết quả Phần 4 thiếu cột: {', '.join(missing_cols)}. Hãy chạy lại `phan4/valuation.py`.")
+        return
+    for c in ("Team", "Pos"):
+        if c not in val_df.columns:
+            val_df[c] = "N/a"
 
     for c in ["Age", "PTS", "VORP", "Actual_Million_USD", "Predicted_Million_USD", "Diff_Million_USD"]:
         if c in val_df.columns:
@@ -434,8 +433,8 @@ def page_valuation():
     # 1. Tổng quan mô hình
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Số cầu thủ định giá", len(val_df))
-    if metrics_df is not None and not metrics_df.empty:
-        best_row = metrics_df.iloc[0]
+    if metrics_df is not None and not metrics_df.empty and {"Model", "CV_R2", "Test_R2"} <= set(metrics_df.columns):
+        best_row = metrics_df.sort_values("CV_R2", ascending=False).iloc[0]
         c2.metric("Mô hình tốt nhất", str(best_row["Model"]))
         c3.metric("CV R² (5-Fold)", f"{float(best_row['CV_R2']):.4f}")
         c4.metric("Test R²", f"{float(best_row['Test_R2']):.4f}")
