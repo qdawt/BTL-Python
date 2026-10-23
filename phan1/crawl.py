@@ -167,7 +167,6 @@ SESSION.headers.update(HEADERS)
 
 
 def fetch(url: str, refresh: bool = False, delay: float = SLEEP_SECONDS) -> str:
-    
     RAW_DIR.mkdir(exist_ok=True)
     fname = re.sub(r"[^A-Za-z0-9_.-]+", "_", url.split(".com/")[-1])
     path = RAW_DIR / fname
