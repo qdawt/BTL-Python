@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+
 """
 PHẦN I - THU THẬP DỮ LIỆU CẦU THỦ NBA MÙA 2024-25 (Basketball-Reference)
 
@@ -36,12 +35,10 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-# ----------------------------------------------------------------------------
-# CẤU HÌNH
-# ----------------------------------------------------------------------------
-SEASON = 2025          # Basketball-Reference gọi mùa 2024-25 là NBA_2025
-MIN_MP = 200           # chỉ lấy cầu thủ có tổng phút > 200
-SLEEP_SECONDS = 5      # nghỉ giữa các request (giới hạn ~20 request/phút)
+
+SEASON = 2025          
+MIN_MP = 200           
+SLEEP_SECONDS = 5      
 MAX_RETRIES = 4
 RAW_DIR = Path("raw")
 BASE = "https://www.basketball-reference.com"
@@ -57,10 +54,7 @@ HEADERS = {
 TOTAL_ROW_RE = re.compile(r"^(\d+TM|TOT)$")   # 2TM, 3TM, TOT
 TEXT_COLS = {"Player", "Team", "Pos", "Height", "Birth", "_pid"}
 
-# ----------------------------------------------------------------------------
-# ĐỊNH NGHĨA BẢNG VÀ MAPPING CỘT
-# Mỗi phần tử: (tên cột xuất ra, [các data-stat có thể có - lấy cái đầu tiên tìm thấy])
-# ----------------------------------------------------------------------------
+
 PER_GAME = [
     ("Player", ["name_display", "player"]),
     ("Team", ["_final_team"]),
@@ -155,7 +149,7 @@ PBP = [
               "own_shot_blocked", "blk_by_opp", "blkd", "blocked"]),
 ]
 
-# name -> (url, [id bảng có thể có], spec)
+
 TABLES = {
     "per_game": (f"{BASE}/leagues/NBA_{SEASON}_per_game.html", ["per_game_stats", "per_game"], PER_GAME),
     "totals": (f"{BASE}/leagues/NBA_{SEASON}_totals.html", ["totals_stats", "totals"], TOTALS),
@@ -167,22 +161,20 @@ TABLES = {
 
 TEAM_ALIASES = ["team_name_abbr", "team_id", "team"]
 
-SESSION = requests.Session()          # [TỐI ƯU] dùng lại kết nối TCP cho các request
+SESSION = requests.Session()          
 SESSION.headers.update(HEADERS)
 
 
-# ----------------------------------------------------------------------------
-# TẢI TRANG (có cache)
-# ----------------------------------------------------------------------------
+
 def fetch(url: str, refresh: bool = False, delay: float = SLEEP_SECONDS) -> str:
-    """Tải HTML của url. Nếu đã có trong raw/ (và hợp lệ) thì đọc từ máy, không gọi web."""
+    
     RAW_DIR.mkdir(exist_ok=True)
     fname = re.sub(r"[^A-Za-z0-9_.-]+", "_", url.split(".com/")[-1])
     path = RAW_DIR / fname
 
     if path.exists() and not refresh:
         html = path.read_text(encoding="utf-8")
-        if "<table" in html:                       # [SỬA] cache hỏng/trang chặn bot -> tải lại
+        if "<table" in html:                       
             print(f"  [cache] {path}")
             return html
         print(f"  [cache hỏng] {path} không có bảng nào -> tải lại")
@@ -199,16 +191,16 @@ def fetch(url: str, refresh: bool = False, delay: float = SLEEP_SECONDS) -> str:
         last_status = r.status_code
         if r.status_code == 200:
             html = r.content.decode("utf-8", errors="replace")
-            if "<table" not in html:               # [SỬA] 200 nhưng là trang chặn bot/captcha
+            if "<table" not in html:               
                 print("  trang trả về không có bảng (có thể bị chặn bot), chờ 30s rồi thử lại...")
                 time.sleep(30)
                 continue
-            tmp = path.with_suffix(path.suffix + ".tmp")   # [SỬA] ghi file an toàn (không để file dở dang)
+            tmp = path.with_suffix(path.suffix + ".tmp")   
             tmp.write_text(html, encoding="utf-8")
             tmp.replace(path)
             time.sleep(delay)
             return html
-        if r.status_code in (429, 500, 502, 503, 504):     # [SỬA] retry cả lỗi 5xx, tôn trọng Retry-After
+        if r.status_code in (429, 500, 502, 503, 504):     
             ra = r.headers.get("Retry-After", "")
             wait = int(ra) if ra.isdigit() else 60 * attempt
             print(f"  HTTP {r.status_code}, chờ {wait}s rồi thử lại ({attempt}/{MAX_RETRIES})...")
@@ -223,15 +215,8 @@ def fetch(url: str, refresh: bool = False, delay: float = SLEEP_SECONDS) -> str:
     )
 
 
-# ----------------------------------------------------------------------------
-# PHÂN TÍCH HTML
-# ----------------------------------------------------------------------------
+
 def extract_table_html(html: str, ids: list) -> str:
-    """
-    [TỐI ƯU + SỬA] Trích đúng thẻ <table id=...> bằng regex thay vì dựng cả cây DOM của trang
-    (trang rất nặng). Cách này tìm được cả bảng nằm trong comment HTML, và nếu không thấy
-    thì BÁO LỖI thay vì lặng lẽ lấy "bảng lớn nhất" (bản cũ có thể lấy nhầm bảng -> sai dữ liệu).
-    """
     for i in ids:
         m = re.search(rf'<table\b[^>]*(?<![\w-])id="{re.escape(i)}"[^>]*>.*?</table>', html, re.S | re.I)
         if m:
@@ -241,12 +226,11 @@ def extract_table_html(html: str, ids: list) -> str:
 
 
 def parse_table(table_html: str) -> pd.DataFrame:
-    """Chuyển <table> thành DataFrame, tên cột = data-stat, thêm cột _pid (Player-ID)."""
     table = BeautifulSoup(table_html, "lxml").find("table")
     body = table.find("tbody") or table
     rows = []
     for tr in body.find_all("tr"):
-        if "thead" in (tr.get("class") or []):   # dòng tiêu đề lặp lại giữa bảng
+        if "thead" in (tr.get("class") or []):   
             continue
         rec, pid = {}, None
         for cell in tr.find_all(["th", "td"]):
@@ -278,11 +262,6 @@ def first_present(df: pd.DataFrame, aliases: list):
 
 
 def collapse_trades(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Mỗi cầu thủ giữ đúng 1 dòng.  [TỐI ƯU] viết bằng thao tác vector của pandas, không lặp từng nhóm.
-    - Dòng giữ lại: dòng TỔNG (2TM/3TM/TOT) nếu có, ngược lại dòng đầu tiên.
-    - _final_team: đội của dòng "không phải tổng" cuối cùng (đội cuối mùa).
-    """
     tcol = first_present(df, TEAM_ALIASES)
     if tcol is None:
         out = df.drop_duplicates("_pid", keep="first").copy()
@@ -320,9 +299,7 @@ def build_table(name: str, html: str, ids: list, spec: list) -> pd.DataFrame:
     return out
 
 
-# ----------------------------------------------------------------------------
-# ROSTER (tùy chọn): Birth, Height, Weight
-# ----------------------------------------------------------------------------
+
 def fetch_rosters(teams: list, refresh: bool, delay: float) -> pd.DataFrame:
     frames = []
     for t in teams:
@@ -343,15 +320,8 @@ def fetch_rosters(teams: list, refresh: bool, delay: float) -> pd.DataFrame:
     return pd.concat(frames).drop_duplicates("_pid", keep="first")
 
 
-# ----------------------------------------------------------------------------
-# LÀM SẠCH, SẮP XẾP, XUẤT
-# ----------------------------------------------------------------------------
+
 def clean_numeric(s: pd.Series) -> pd.Series:
-    """
-    [SỬA] Bản cũ dùng pd.to_numeric trực tiếp -> các giá trị như "12%" hay "+3.4" hay "1,234"
-    biến thành NaN -> ghi nhầm thành "N/a". Ở đây bỏ %, +, dấu phẩy trước khi ép kiểu.
-    (Giá trị "12%" thành 12.0, giữ nguyên đơn vị như trang hiển thị.)
-    """
     s = s.astype("string").str.replace(r"[%+,]", "", regex=True)
     return pd.to_numeric(s, errors="coerce").astype("float64")
 
@@ -368,11 +338,6 @@ def strip_accents(s: str) -> str:
 
 
 def sort_players(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    [SỬA] Đề: sắp xếp theo TÊN ĐẦU TIÊN; trùng tên thì tuổi giảm dần.
-    Bản cũ sắp theo cả chuỗi "Họ tên" (nên các cầu thủ trùng tên đầu bị xếp theo họ, không theo tuổi)
-    và dùng casefold() nên tên có dấu (Álex, Ömer...) bị đẩy xuống cuối bảng.
-    """
     out = df.copy()
     out["_first"] = out["Player"].map(lambda n: strip_accents(str(n).split()[0]) if str(n).split() else "")
     out["_full"] = out["Player"].map(lambda n: strip_accents(str(n)))
@@ -381,10 +346,6 @@ def sort_players(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def format_output(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    [SỬA] Cột số nguyên có NaN bị pandas đổi thành float -> CSV ra "72.0" thay vì "72".
-    Đổi cột toàn số nguyên về Int64, rồi điền "N/a" cho ô thiếu.
-    """
     df = df.copy()
     for c in df.columns:
         if c in TEXT_COLS:
@@ -408,7 +369,7 @@ def main():
     ap.add_argument("--list-columns", action="store_true", help="in data-stat của từng bảng rồi thoát")
     args = ap.parse_args()
 
-    # 1) Tải HTML 6 bảng
+    
     htmls = {}
     for name, (url, ids, spec) in TABLES.items():
         print(f"Tải bảng {name} ...")
@@ -420,25 +381,25 @@ def main():
             print(f"\n== {name} ==\n{list(df.columns)}")
         return
 
-    # 2) Parse + xử lý trade + chọn cột
+    
     built = {}
     for name, (url, ids, spec) in TABLES.items():
         print(f"Xử lý bảng {name} ...")
         built[name] = build_table(name, htmls[name], ids, spec)
-    htmls.clear()   # [TỐI ƯU] giải phóng RAM (6 trang HTML lớn)
+    htmls.clear()   
 
-    # 3) Gộp theo Player-ID (lấy per_game làm gốc vì có Player/Team/Pos/Age)
+   
     df = built["per_game"]
     for name in ["totals", "per_poss", "advanced", "shooting", "play-by-play"]:
         df = df.merge(built[name], on="_pid", how="left", validate="one_to_one")
 
-    # 4) Roster (tùy chọn)
+    
     if args.roster:
         teams = sorted(t for t in df["Team"].dropna().unique() if not TOTAL_ROW_RE.match(str(t)))
         print(f"Tải roster {len(teams)} đội ...")
         df = df.merge(fetch_rosters(teams, args.refresh, args.delay), on="_pid", how="left")
 
-    # 5) Ép kiểu số, lọc MP > 200
+    
     df = to_numeric_cols(df)
     before = len(df)
     df = df[df["MP"] > args.min_mp].copy()
@@ -446,22 +407,22 @@ def main():
     if not 300 <= len(df) <= 600:
         print("CẢNH BÁO: số cầu thủ nằm ngoài khoảng thường gặp (300-600), kiểm tra lại cột MP / mapping.")
 
-    # 6) Sắp xếp: tên đầu tiên, trùng thì tuổi giảm dần
+    
     df = sort_players(df)
 
-    # 7) Sắp xếp thứ tự cột, bỏ cột khóa
+    
     front = ["Player", "Team", "Pos", "Age", "G", "GS", "MP", "MP/G"]
     if args.roster:
         front += ["Birth", "Height", "Weight"]
     cols = front + [c for c in df.columns if c not in front and c != "_pid"]
     df = df[cols]
 
-    # 8) Kiểm tra trước khi ghi
+    
     dup = df[df.duplicated("Player", keep=False)]["Player"].unique()
     if len(dup):
         print(f"LƯU Ý: có tên trùng nhau (khác người, đã được xếp theo tuổi giảm dần): {list(dup)}")
 
-    # 9) Thống kê không có -> "N/a", xuất file
+    
     df = format_output(df)
     df.to_csv(args.out, index=False, encoding="utf-8-sig")
     print(f"\nXong! Đã ghi {len(df)} dòng, {len(df.columns)} cột vào {args.out}")
@@ -474,7 +435,7 @@ def main():
         except ImportError:
             print("Muốn xuất file Excel, cài thêm:  pip install openpyxl  rồi chạy lại.")
 
-    # 10) Báo cáo ô thiếu
+   
     na_count = (df == "N/a").sum()
     na_cols = [c for c in df.columns if na_count[c] == len(df)]
     if na_cols:
