@@ -1,4 +1,5 @@
-
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 PHẦN I - THU THẬP DỮ LIỆU CẦU THỦ NBA MÙA 2024-25 (Basketball-Reference)
 
@@ -51,7 +52,7 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
-TOTAL_ROW_RE = re.compile(r"^(\d+TM|TOT)$")   # 2TM, 3TM, TOT
+TOTAL_ROW_RE = re.compile(r"^(\d+TM|TOT)$")   
 TEXT_COLS = {"Player", "Team", "Pos", "Height", "Birth", "_pid"}
 
 
