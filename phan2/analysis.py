@@ -13,8 +13,8 @@ BASE_DIR = Path(__file__).resolve().parent
 INPUT_FILE = BASE_DIR.parent /"phan1" / "results.csv"
 OUTPUT_DIR = BASE_DIR/"output"
 
-ALL_CHART_DIR = OUTPUT_DIR / "Histograms_all"
-TEAM_CHART_DIR = OUTPUT_DIR / "Histograms_teams"
+ALL_CHART_DIR = OUTPUT_DIR / "Histograms_all" # biểu đồ về từng chỉ số
+TEAM_CHART_DIR = OUTPUT_DIR / "Histograms_teams" # biểu đồ về các đội theo 6 chỉ số
 
 SELECT_STATS = ["PTS", "TRB", "AST", "TS%", "USG%", "BPM"]
 LOWER_IS_BETTER = {"TOV", "PF", "DRtg"}
@@ -80,7 +80,7 @@ df.isna().sum().rename("Missing_count").to_csv(
 top_bottom_rows = []
 
 for stat in stats:
-    valid = df.dropna(subset=[stat])
+    valid = df.dropna(subset=[stat]) # loại bỏ những dòng thiếu dữ liệu và chỉ kiểm tra cột có tên trong stats
     #valid là một dataframe
 
     if valid.empty:
@@ -95,6 +95,7 @@ for stat in stats:
         # print("Nhóm đang xét:", category)
         # print(selected[["Player", stat]])
         for rank, (idx, player) in enumerate(selected.iterrows(), start=1):
+            # iterrows() là phương thức dùng để duyệt qua từng dòng (row) của DataFrame.
             top_bottom_rows.append({
                 "Statistic": stat, # chi so
                 "Category": category, # nhom dang xet(high or low)
@@ -177,6 +178,7 @@ for number, stat in enumerate (stats, start=1):
 # Histogram cho các đội dựa trên 6 chỉ số trong SELECT_STATS
 cnt_image_team_file = 0
 for number, stat in enumerate(SELECT_STATS, start=1):
+    # enumerate() là hàm giúp lấy cả chỉ số (index) và giá trị (value) của từng phần tử khi duyệt một danh sách hoặc một đối tượng có thể lặp
     all_values = df[stat].dropna()
     if all_values.empty:
         print(f"Bỏ qua {stat}: không có dữ liệu để vẽ theo đội.")
