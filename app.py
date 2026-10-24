@@ -427,7 +427,7 @@ def compute_ratings():
 
 
 def page_valuation():
-    st.header("Định giá cầu thủ (Phần 4)")
+    st.header("Định giá cầu thủ")
     ratings, err = compute_ratings()
     if err:
         st.error(err)
